@@ -4,6 +4,22 @@ import matplotlib.pyplot as plt
 
 # ============================================================
 # 1. EGEN FFT
+
+# FFT flow:
+
+# 1. Split the signal into even and odd samples.
+
+# 2. Repeat the split recursively until only one sample remains.
+
+# 3. Calculate the twiddle factor (complex rotation).
+
+# 4. Combine the even and odd results using butterfly operations.
+
+# 5. Return the frequency-domain result X[k].
+
+#
+
+# Time domain x[n]  -->  FFT  -->  Frequency domain X[k]
 # ============================================================
 
 def fft(x):
