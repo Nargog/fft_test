@@ -83,13 +83,22 @@ t = np.arange(N) / fs
 
 
 # Två sinusvågor
+signal_1Hz = 1.0 * np.sin(2 * np.pi * 1 * t)
+
+signal_5Hz = 1.0 * np.sin(2 * np.pi * 5 * t)
 signal_10Hz = 1.0 * np.sin(2 * np.pi * 10 * t)
 
-signal_50Hz = 0.5 * np.sin(2 * np.pi * 50 * t)
+signal_15Hz = 1.0 * np.sin(2 * np.pi * 15 * t)
+signal_20Hz = 1.0 * np.sin(2 * np.pi * 20 * t)
+
+signal_25Hz = 1.0 * np.sin(2 * np.pi * 25 * t)
+signal_30Hz = 1.0 * np.sin(2 * np.pi * 30 * t)
+
+signal_35Hz = 1.0 * np.sin(2 * np.pi * 35 * t)
 
 
 # Lägg ihop dem
-x = signal_10Hz + signal_50Hz
+x = signal_1Hz + signal_5Hz + signal_10Hz + signal_15Hz + signal_20Hz + signal_25Hz + signal_30Hz + signal_35Hz
 
 
 # Lägg till DC-offset
@@ -102,7 +111,7 @@ x = x + DC
 # 4. HÖGPASSFILTRERA
 # ============================================================
 
-fc = 1.0       # gränsfrekvens 1 Hz
+fc = 10.0       # gränsfrekvens 1 Hz
 
 x_filtered = highpass(x, fs, fc)
 
