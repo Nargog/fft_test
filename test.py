@@ -2,189 +2,124 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-# ============================================================
-# 1. EGEN FFT
-
-# FFT flow:
-
-# 1. Split the signal into even and odd samples.
-
-# 2. Repeat the split recursively until only one sample remains.
-
-# 3. Calculate the twiddle factor (complex rotation).
-
-# 4. Combine the even and odd results using butterfly operations.
-
-# 5. Return the frequency-domain result X[k].
-
-#
-
-# Time domain x[n]  -->  FFT  -->  Frequency domain X[k]
-# ============================================================
+# ------------------------------------------------------------
+# 1. Egen FFT (radix-2 Cooley-Tukey)
+# ------------------------------------------------------------
 
 def fft(x):
-    N = len(x)
+    """Beräknar FFT för en signal med längd N = 2^k."""
+    n = len(x)
 
-    # Rekursionens slut
-    if N == 1:
+    if n == 1:
         return x
 
-    # Dela upp i jämna och udda sampel
     even = fft(x[::2])
     odd = fft(x[1::2])
 
-    X = np.zeros(N, dtype=complex)
+    result = np.zeros(n, dtype=complex)
 
-    # Kombinera resultaten
-    for k in range(N // 2):
+    for k in range(n // 2):
+        w = np.exp(-2j * np.pi * k / n)
+        result[k] = even[k] + w * odd[k]
+        result[k + n // 2] = even[k] - w * odd[k]
 
-        W = np.exp(-2j * np.pi * k / N)
-
-        X[k] = even[k] + W * odd[k]
-
-        X[k + N // 2] = even[k] - W * odd[k]
-
-    return X
+    return result
 
 
-# ============================================================
-# 2. EGET HÖGPASSFILTER
-# ============================================================
+# ------------------------------------------------------------
+# 2. Eget högpassfilter
+# ------------------------------------------------------------
 
 def highpass(x, fs, fc):
-
+    """Approximerar ett första ordningens RC-högpassfilter."""
     dt = 1 / fs
-
-    RC = 1 / (2 * np.pi * fc)
-
-    alpha = RC / (RC + dt)
+    rc = 1 / (2 * np.pi * fc)
+    alpha = rc / (rc + dt)
 
     y = np.zeros(len(x))
-
     for n in range(1, len(x)):
-
-        y[n] = alpha * (
-            y[n-1]
-            + x[n]
-            - x[n-1]
-        )
+        y[n] = alpha * (y[n - 1] + x[n] - x[n - 1])
 
     return y
 
 
-# ============================================================
-# 3. SKAPA EN TESTSIGNAL
-# ============================================================
+# ------------------------------------------------------------
+# 3. Skapa testsignal
+# ------------------------------------------------------------
 
-fs = 1024          # samplingsfrekvens [Hz]
-N = 1024           # antal sampel
+def create_signal(t):
+    frequencies = [1, 5, 10, 15, 20, 25, 30, 35]
+    signal = np.zeros_like(t)
 
-t = np.arange(N) / fs
+    for freq in frequencies:
+        signal += np.sin(2 * np.pi * freq * t)
 
-
-# Två sinusvågor
-signal_1Hz = 1.0 * np.sin(2 * np.pi * 1 * t)
-
-signal_5Hz = 1.0 * np.sin(2 * np.pi * 5 * t)
-signal_10Hz = 1.0 * np.sin(2 * np.pi * 10 * t)
-
-signal_15Hz = 1.0 * np.sin(2 * np.pi * 15 * t)
-signal_20Hz = 1.0 * np.sin(2 * np.pi * 20 * t)
-
-signal_25Hz = 1.0 * np.sin(2 * np.pi * 25 * t)
-signal_30Hz = 1.0 * np.sin(2 * np.pi * 30 * t)
-
-signal_35Hz = 1.0 * np.sin(2 * np.pi * 35 * t)
+    signal += 5.0  # DC-offset
+    return signal
 
 
-# Lägg ihop dem
-x = signal_1Hz + signal_5Hz + signal_10Hz + signal_15Hz + signal_20Hz + signal_25Hz + signal_30Hz + signal_35Hz
+# ------------------------------------------------------------
+# 4. FFT-analys
+# ------------------------------------------------------------
+
+def calculate_amplitude_spectrum(signal, fs):
+    spectrum = fft(signal)
+    amplitude = np.abs(spectrum) / len(signal)
+
+    half = len(signal) // 2
+    frequencies = np.arange(len(signal)) * fs / len(signal)
+    frequencies = frequencies[:half]
+    amplitude = amplitude[:half]
+    amplitude[1:] *= 2
+
+    return frequencies, amplitude
 
 
-# Lägg till DC-offset
-DC = 5.0
+# ------------------------------------------------------------
+# 5. Plotting
+# ------------------------------------------------------------
 
-x = x + DC
-
-
-# ============================================================
-# 4. HÖGPASSFILTRERA
-# ============================================================
-
-fc = 10.0       # gränsfrekvens 1 Hz
-
-x_filtered = highpass(x, fs, fc)
-
-
-# ============================================================
-# 5. FFT
-# ============================================================
-
-X = fft(x_filtered)
+def plot_time_signal(t, original, filtered):
+    plt.figure()
+    plt.plot(t, original, label="Original")
+    plt.plot(t, filtered, label="Efter högpassfilter")
+    plt.xlabel("Tid [s]")
+    plt.ylabel("Spänning [V]")
+    plt.title("Tidssignal")
+    plt.legend()
+    plt.grid(True)
 
 
-# ============================================================
-# 6. SKAPA FREKVENSAXEL
-# ============================================================
 
-frequencies = np.arange(N) * fs / N
-
-
-# ============================================================
-# 7. BERÄKNA AMPLITUD
-# ============================================================
-
-amplitude = np.abs(X) / N
+def plot_frequency_spectrum(frequencies, amplitude):
+    plt.figure()
+    plt.plot(frequencies, amplitude)
+    plt.xlabel("Frekvens [Hz]")
+    plt.ylabel("Amplitud")
+    plt.title("FFT efter högpassfilter")
+    plt.xlim(0, 100)
+    plt.grid(True)
 
 
-# Vi använder bara positiva frekvenser
-half = N // 2
+# ------------------------------------------------------------
+# 6. Huvudprogram
+# ------------------------------------------------------------
 
-frequencies = frequencies[:half]
+def main():
+    fs = 1024
+    n = 1024
+    t = np.arange(n) / fs
 
-amplitude = amplitude[:half]
+    x = create_signal(t)
+    fc = 10.0
+    x_filtered = highpass(x, fs, fc)
 
+    frequencies, amplitude = calculate_amplitude_spectrum(x_filtered, fs)
 
-# Korrigera amplituden eftersom vi bara visar
-# den positiva halvan av spektrumet
-amplitude[1:] = 2 * amplitude[1:]
-
-
-# ============================================================
-# 8. RITA TIDSSIGNALEN
-# ============================================================
-
-plt.figure()
-
-plt.plot(t, x, label="Original")
-plt.plot(t, x_filtered, label="Efter högpassfilter")
-
-plt.xlabel("Tid [s]")
-plt.ylabel("Spänning [V]")
-
-plt.title("Tidssignal")
-
-plt.legend()
-plt.grid()
-
-plt.show()
+    plot_time_signal(t, x, x_filtered)
+    plot_frequency_spectrum(frequencies, amplitude)
+    plt.show()
 
 
-# ============================================================
-# 9. RITA FFT
-# ============================================================
-
-plt.figure()
-
-plt.plot(frequencies, amplitude)
-
-plt.xlabel("Frekvens [Hz]")
-plt.ylabel("Amplitud")
-
-plt.title("FFT efter högpassfilter")
-
-plt.xlim(0, 100)
-
-plt.grid()
-
-plt.show()
+if __name__ == "__main__":
+    main()
